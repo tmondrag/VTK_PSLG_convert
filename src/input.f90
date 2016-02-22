@@ -14,8 +14,9 @@ CONTAINS
     CHARACTER(LEN=StrBuffLen) :: filename
     CHARACTER(LEN=StrBuffLen) :: fileroot
     CHARACTER(LEN=StrBuffLen) :: filename_temp
-    INTEGER                   :: num_vertices, num_attributes, num_dimensions, num_bmarkers, num_segments
-    INTEGER                   :: Cind,i
+    INTEGER                   :: num_vertices, num_segments, num_holes
+    INTEGER                   :: num_attributes, num_dimensions, num_bmarkers
+    INTEGER                   :: Cind,i,dummi
     INTEGER                   :: nfd          ! file descriptor/unit number for nodefile
     LOGICAL                   :: has_bound_flag
 
@@ -52,7 +53,16 @@ CONTAINS
     has_bound_flag = (num_bmarkers .NE. 0)
     ALLOCATE(geom%segments(1:num_segments))
     DO i=1,num_segments
+      CALL skip_comments(fd)
       CALL read_segment(fd,geom%segments(i),has_bound_flag)
+    END DO
+    CALL skip_comments(fd)
+    ! Read in hole seeds
+    READ(fd,*,ERR=100) num_holes
+    ALLOCATE(geom%holes(1:num_holes))
+    DO i=1,num_holes
+      CALL skip_comments(fd)
+      READ(fd,*,ERR=175) dummi,geom%holes(i)%x,geom%holes(i)%y
     END DO
     RETURN
 
@@ -62,6 +72,8 @@ CONTAINS
     WRITE(stderr,'(A)') "Please use a .poly PSLG file as input if vertex information is in a .node file."
     STOP
 150 WRITE(stderr,'(A,A,A)') "Error reading from .node file ",filename_temp,"."
+    STOP
+175 WRITE(stderr,'(A)') "ERROR: hole information misread."
     STOP
   END FUNCTION
 
