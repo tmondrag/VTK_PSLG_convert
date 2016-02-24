@@ -16,8 +16,8 @@ CONTAINS
     WRITE(fd,'(A26)') '# vtk DataFile Version 3.0'
     WRITE(fd,'(A31)') 'Translation of PSLG format file'
     WRITE(fd,'(A5)') 'ASCII'
-    WRITE(fd,'(A16)') 'DATASET POLYDATA'
-    WRITE(fd,'(/A7,i10,A6)') 'POINTS ' ,SIZE(geom%vertices)+SIZE(geom%holes),' DOUBLE'
+    WRITE(fd,'(A)') 'DATASET UNSTRUCTURED_GRID'
+    WRITE(fd,'(/A7,i10,A7)') 'POINTS ' ,SIZE(geom%vertices)+SIZE(geom%holes),' DOUBLE'
     ! write out the vertices
     DO i=1,SIZE(geom%vertices)
       WRITE(fd,'(F18.12,1X,F18.12,1X,F18.12)') geom%vertices(i)%x, geom%vertices(i)%y, 0.
@@ -26,10 +26,27 @@ CONTAINS
     DO i=1,SIZE(geom%holes)
       WRITE(fd,'(F18.12,1X,F18.12,1X,F18.12)') geom%holes(i)%x, geom%holes(i)%y, 0.
     END DO
-    ! write out the segment connectivity. Every segment only consists of two points
-    WRITE(fd,'(/A,1X,I8,1X,I8)') 'LINES ',SIZE(geom%segments),3*SIZE(geom%segments)
+    ! write out the connectivity.
+    IF(geom%triangles(1)%is_subquad) THEN
+      WRITE(fd,'(/A,1X,I8,1X,I8)') 'CELLS ',SIZE(geom%segments)+SIZE(geom%triangles), &
+                                    3*SIZE(geom%segments)+7*SIZE(geom%triangles)
+    ELSE
+      WRITE(fd,'(/A,1X,I8,1X,I8)') 'CELLS ',SIZE(geom%segments)+SIZE(geom%triangles), &
+                                    3*SIZE(geom%segments)+3*SIZE(geom%triangles)
+    END IF
+    ! Write out segment connectivity. Remember, vtk point indices start with 0
     DO i=1,SIZE(geom%segments)
-      WRITE(fd,'(I1,1X,I8,1X,I8)') 2, geom%segments(i)%ep1, geom%segments(i)%ep2
+      WRITE(fd,'(I2,1X,I8,1X,I8)') 3, geom%segments(i)%ep1-1, geom%segments(i)%ep2-1
+    END DO
+    ! Write out triangle connectivity. Remember, vtk point indices start with 0
+    ! remember vtk likes its points ordered on a quad triangle so that the first edge is opposite the third corner, the second edge is opposite the first corner, and the third edge is opposite the second corner
+    DO i=1,SIZE(geom%triangles)
+      IF(geom%triangles(i)%is_subquad) THEN
+        WRITE(fd,'(I2,1X,I8,1X,I8,1X,I8,1X,I8,1X,I8,1X,I8)') 22, geom%triangles(i)%c1-1, geom%triangles(i)%c2-1, &
+                       geom%triangles(i)%c3-1, geom%triangles(i)%e3-1, geom%triangles(i)%e1-1, geom%triangles(i)%e2-1
+      ELSE
+        WRITE(fd,'(I2,1X,I8,1X,I8,1X,I8)') 5, geom%triangles(i)%c1-1, geom%triangles(i)%c2-1, geom%triangles(i)%c3-1
+      END IF
     END DO
     ! write out attributes
     ! the number of attributes should be the same for each point
@@ -38,7 +55,7 @@ CONTAINS
     num_attributes = 0
     IF(ALLOCATED(geom%vertices(1)%attributes)) num_attributes = SIZE(geom%vertices(1)%attributes)
     WRITE(fd,'(/A11,I10)') 'POINT_DATA ',SIZE(geom%vertices)+SIZE(geom%holes)
-    WRITE(fd,'(/A,/A)') 'SCALARS int vertex_boundary','LOOKUP_TABLE default'
+    WRITE(fd,'(/A,/A)') 'SCALARS vertex_boundary int','LOOKUP_TABLE default'
     DO i=1,SIZE(geom%vertices)
       IF(geom%vertices(i)%isbound) THEN
         WRITE(fd,'(I1)') 1
@@ -50,7 +67,7 @@ CONTAINS
       WRITE(fd,'(I1)') 0
     END DO
     ! mark off the hole seeds in the point set
-    WRITE(fd,'(/A,/A)') 'SCALARS int hole_seeds','LOOKUP_TABLE default'
+    WRITE(fd,'(/A,/A)') 'SCALARS hole_seeds int','LOOKUP_TABLE default'
     DO i=1,SIZE(geom%vertices)
       WRITE(fd,'(I1)') 0
     END DO
@@ -59,7 +76,7 @@ CONTAINS
     END DO
     IF(num_attributes .GT. 0) THEN
       DO j=1,num_attributes
-        WRITE(fd,'(/A,I0.2,/A)') 'SCALARS DOUBLE attribute_',j,'LOOKUP_TABLE default'
+        WRITE(fd,'(/A,I0.2,A,/A)') 'SCALARS attribute_',j,' double','LOOKUP_TABLE default'
         DO i=1,SIZE(geom%vertices)
           WRITE(fd,'(F18.12)') geom%vertices(i)%attributes(j)
         END DO
@@ -69,8 +86,10 @@ CONTAINS
       END DO
     END IF
     ! segments may also be bounds, so use cell_data
-    WRITE(fd,'(/A10,I10)') 'CELL_DATA ',SIZE(geom%segments)
-    WRITE(fd,'(/A,/A)') 'SCALARS int segment_boundary','LOOKUP_TABLE default'
+    num_attributes = 0
+    IF(ALLOCATED(geom%triangles(1)%attributes)) num_attributes = SIZE(geom%triangles(1)%attributes)
+    WRITE(fd,'(/A10,I10)') 'CELL_DATA ',SIZE(geom%segments)+SIZE(geom%triangles)
+    WRITE(fd,'(/A,/A)') 'SCALARS segment_boundary int','LOOKUP_TABLE default'
     DO i=1,SIZE(geom%segments)
       IF(geom%segments(i)%isbound) THEN
         WRITE(fd,'(I1)') 1
@@ -78,6 +97,21 @@ CONTAINS
         WRITE(fd,'(I1)') 0
       END IF
     END DO
+    DO i=1,SIZE(geom%triangles)
+      WRITE(fd,'(I1)') 0
+    END DO
+    ! write out triangle element attributes
+    IF(num_attributes .GT. 0) THEN
+      DO j=1,num_attributes
+        WRITE(fd,'(/A,I0.2,A,/A)') 'SCALARS cell_attribute_',j,' double','LOOKUP_TABLE default'
+        DO i=1,SIZE(geom%segments)
+          WRITE(fd,'(F18.12)') 0.
+        END DO
+        DO i=1,SIZE(geom%triangles)
+          WRITE(fd,'(F18.12)') geom%triangles(i)%attributes(j)
+        END DO
+      END DO
+    END IF
 
   END SUBROUTINE print_to_vtk
 

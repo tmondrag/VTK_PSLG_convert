@@ -22,17 +22,18 @@ SRCDIR = src
 PROGRAMS = $(addprefix $(BINDIR)/,kindtest convert_PSLG_to_VTK)
 
 # default Make target
-default : $(PROGRAMS)
+all : $(PROGRAMS)
 
 # Executable dependencies - list object files which each executable will need for linker step
 $(BINDIR)/kindtest : $(addprefix $(OBJDIR)/,kindprecision.o kindtest.o)
-$(BINDIR)/convert_PSLG_to_VTK : $(addprefix $(OBJDIR)/,kindprecision.o filehandling.o types.o input.o convert_PSLG_to_VTK.o)
+$(BINDIR)/convert_PSLG_to_VTK : $(addprefix $(OBJDIR)/,kindprecision.o filehandling.o types.o input.o output.o convert_PSLG_to_VTK.o)
 
 # Object dependencies - some objects depend on modules from other objects to be compiled first
 $(OBJDIR)/kindtest.o : $(OBJDIR)/kindprecision.o
-$(OBJDIR)/convert_PSLG_to_VTK.o : $(addprefix $(OBJDIR)/,filehandling.o types.o kindprecision.o input.o)
+$(OBJDIR)/convert_PSLG_to_VTK.o : $(addprefix $(OBJDIR)/,filehandling.o types.o kindprecision.o input.o output.o)
 $(OBJDIR)/types.o : $(OBJDIR)/kindprecision.o
 $(OBJDIR)/input.o :  $(addprefix $(OBJDIR)/,filehandling.o types.o kindprecision.o)
+$(OBJDIR)/output.o :  $(addprefix $(OBJDIR)/,filehandling.o types.o kindprecision.o)
 
 #Default executable recipes
 $(BINDIR)/%: $(OBJDIR)/%.o | $(BINDIR)

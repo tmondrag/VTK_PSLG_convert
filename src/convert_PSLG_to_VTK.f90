@@ -3,6 +3,7 @@ PROGRAM convert_PSLG_to_VTK
   USE filehandling
   USE kindprecision
   USE input
+  USE output
   IMPLICIT NONE
   TYPE(geometry)            :: my_geometry
   CHARACTER(len=StrBuffLen) :: arg_buffer
@@ -27,6 +28,7 @@ PROGRAM convert_PSLG_to_VTK
 
   CALL find_IU_info(iunit)
   my_geometry = read_from_PSLG(iunit)
+  CALL print_to_vtk(my_geometry,ounit)
   CALL deallocate_geometry(my_geometry)
   CALL find_IU_info(ounit)
 
