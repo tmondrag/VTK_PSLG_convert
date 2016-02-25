@@ -201,11 +201,13 @@ CONTAINS
     WRITE(pfd,'(I8,1X,I1)') num_elements,1
     ! Write out segment information
     IF(num_elements .GT. 0) THEN
-      IF(geom%segments(i)%isbound) THEN
-        WRITE(pfd,'(I8,1X,I8,1X,I8,1X,I1)') i, geom%segments(i)%ep1, geom%segments(i)%ep2, 1
-      ELSE
-        WRITE(pfd,'(I8,1X,I8,1X,I8,1X,I1)') i, geom%segments(i)%ep1, geom%segments(i)%ep2, 0
-      END IF
+      DO i=1,num_elements
+        IF(geom%segments(i)%isbound) THEN
+          WRITE(pfd,'(I8,1X,I8,1X,I8,1X,I1)') i, geom%segments(i)%ep1, geom%segments(i)%ep2, 1
+        ELSE
+          WRITE(pfd,'(I8,1X,I8,1X,I8,1X,I1)') i, geom%segments(i)%ep1, geom%segments(i)%ep2, 0
+        END IF
+      END DO
     END IF
     ! Write out hole information intro
     IF(ALLOCATED(geom%segments)) THEN
@@ -247,13 +249,14 @@ CONTAINS
         IF(geom%triangles(i)%is_subquad) THEN
           WRITE(buffer,'(A,1X,I8,1X,I8,1X,I8)') TRIM(buffer),geom%triangles(i)%e1,geom%triangles(i)%e2,geom%triangles(i)%e3
         END IF
+        IF(num_attributes .GT. 0) THEN
+          DO j = 1,num_attributes
+           WRITE(buffer,'(A,1X,F18.12)') TRIM(buffer),geom%triangles(i)%attributes(j)
+          END DO
+        END IF
+        WRITE(efd,'(A)') TRIM(buffer)
       END DO
-      IF(num_attributes .GT. 0) THEN
-        DO j = 1,num_attributes
-         WRITE(buffer,'(A,1X,F18.12)') TRIM(buffer),geom%triangles(i)%attributes(j)
-        END DO
-      END IF
-      WRITE(efd,'(A)') TRIM(buffer)
     END IF
+
   END SUBROUTINE
 END MODULE output
