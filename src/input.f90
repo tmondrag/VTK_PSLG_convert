@@ -68,11 +68,10 @@ CONTAINS
       efd = safeopen_readonly(filename_ele)
       CALL skip_comments(efd)
       READ(efd,*,ERR=175) num_tri, nodes_per_tri, num_attributes
-      !write(stderr,*)num_tri, nodes_per_tri, num_attributes
       ALLOCATE(geom%triangles(1:num_tri))
       DO i=1,num_tri
         CALL skip_comments(efd)
-        CALL read_triangle(fd,geom%triangles(i),nodes_per_tri,num_attributes)
+        CALL read_triangle(efd,geom%triangles(i),nodes_per_tri,num_attributes)
       END DO
       CLOSE(efd)
     END IF
@@ -183,7 +182,6 @@ CONTAINS
     INTEGER                                           :: i, sepindex
 
     READ(fd,'(A)',ERR=100) buffer
-    write(stderr,*) TRIM(buffer)
     sepindex = INDEX(buffer,' ')
     DO WHILE(sepindex .EQ. 1)
       buffer = buffer(sepindex+1:StrBuffLen)
@@ -192,7 +190,6 @@ CONTAINS
     field = buffer(1:sepindex-1)
     buffer = buffer(sepindex+1:StrBuffLen)
     ! the first field should be the index of this triangle. Not useful here, but it might be useful to check during debugs
-    !WRITE(stderr,*) "reading triangle ",trim(field),'.'
     IF((nodes_per_tri .EQ. 3) .OR. (nodes_per_tri .EQ. 6)) THEN
       sepindex = INDEX(buffer,' ')
       DO WHILE(sepindex .EQ. 1)
@@ -221,7 +218,6 @@ CONTAINS
       buffer = buffer(sepindex+1:StrBuffLen)
       ! the fourth field is the index of the third corner
       READ(field,*,ERR=100) th_tri%c3
-      !WRITE(stderr, *) "Corners at: ",th_tri%c1,th_tri%c2,th_tri%c3
     ELSE
       GOTO 100
     END IF
@@ -343,7 +339,6 @@ CONTAINS
 
     ReadComments: DO
       READ(fd, '(A)') buffer
-      write(stderr,*) TRIM(buffer)
       IF((buffer(1:1) /= "#") .AND. (TRIM(buffer) /= "")) exit ReadComments
     END DO ReadComments
     BACKSPACE(fd)

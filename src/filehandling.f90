@@ -194,22 +194,22 @@ CONTAINS
 
     INQUIRE(UNIT=fd, OPENED=opened, EXIST=exists, NAMED=named, ACTION=omode, POSITION=pos)
     IF (opened) THEN
-      WRITE(stdout,'(A,i6,A,A,A,A,A)') "File descriptor unit ",fd," is opened &
+      WRITE(stderr,'(A,i6,A,A,A,A,A)') "File descriptor unit ",fd," is opened &
                                         &in mode ",TRIM(omode), " at position ",TRIM(pos),"."
     ELSE
-      WRITE(stdout,'(A,i6,A)') "File descriptor unit ",fd," is not open."
+      WRITE(stderr,'(A,i6,A)') "File descriptor unit ",fd," is not open."
     END IF
     IF (exists) THEN
-      WRITE(stdout,'(A,i6,A)') "File descriptor unit ",fd," is in the range of values &
+      WRITE(stderr,'(A,i6,A)') "File descriptor unit ",fd," is in the range of values &
                                 &allowed by the compiler."
     ELSE
-      WRITE(stdout,'(A,i6,A)') "File descriptor unit ",fd," not allowed by the compiler."
+      WRITE(stderr,'(A,i6,A)') "File descriptor unit ",fd," not allowed by the compiler."
     END IF
     IF (named) THEN
       INQUIRE(UNIT=fd,NAME=filename)
-      WRITE(stdout,'(A,i6,A,A,A)') "File descriptor unit ",fd," is named ",TRIM(filename),"."
+      WRITE(stderr,'(A,i6,A,A,A)') "File descriptor unit ",fd," is named ",TRIM(filename),"."
     ELSE
-      WRITE(stdout,'(A,i6,A)') "File descriptor unit ",fd," is unnamed."
+      WRITE(stderr,'(A,i6,A)') "File descriptor unit ",fd," is unnamed."
     END IF
   END SUBROUTINE find_IU_info
 END MODULE filehandling
