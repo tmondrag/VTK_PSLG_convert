@@ -141,8 +141,119 @@ CONTAINS
 
   END SUBROUTINE print_to_vtk
 
-  SUBROUTINE print_to_pslg(geom,fd)
-    integer geom
-    integer fd
+  SUBROUTINE print_to_pslg(geom,filename_poly)
+    TYPE(geometry),INTENT(IN)                         :: geom
+    CHARACTER(len=StrBuffLen),INTENT(IN)              :: filename_poly
+    CHARACTER(len=StrBuffLen)                         :: fileroot, filename_node, filename_ele
+    CHARACTER(len=StrBuffLen)                         :: buffer
+    INTEGER                                           :: pfd,nfd,efd
+    INTEGER                                           :: Cind, i, j, num_attributes, num_elements
+
+    pfd = safeopen_writereplace(filename_poly)
+    Cind = INDEX(filename_poly,".poly",back=.TRUE.)
+    IF(Cind .EQ. 0) THEN
+      fileroot = TRIM(filename_poly)
+    ELSE
+      fileroot = filename_poly(1:Cind-1)
+    END IF
+    filename_node = TRIM(fileroot) // ".node"
+    filename_ele = TRIM(fileroot) // ".ele"
+    nfd = safeopen_writereplace(filename_node)
+    efd = safeopen_writereplace(filename_ele)
+
+    ! write the first lines of the poly and node files
+    IF(ALLOCATED(geom%vertices)) THEN
+      num_elements = SIZE(geom%vertices)
+      IF(ALLOCATED(geom%vertices(1)%attributes)) THEN
+        num_attributes = SIZE(geom%vertices(1)%attributes)
+      ELSE
+        num_attributes = 0
+      END IF
+    ELSE
+      WRITE(stderr,'(A)') "ERROR: Empty geometry, nothing to print out to PSLG" ! If you are here, you probably called this subroutine too soon
+      STOP
+    END IF
+    WRITE(pfd,'(I8,1X,I1,1X,I4,1X,I1)') 0,2,num_attributes,1
+    WRITE(nfd,'(I8,1X,I1,1X,I4,1X,I1)') num_elements,2,num_attributes,1
+    ! write out node information
+    DO i=1,num_elements
+      buffer = ""
+      WRITE(buffer,'(I8,1X,F18.12,1X,F18.12)') i,geom%vertices(i)%x,geom%vertices(i)%y
+      IF(num_attributes .GT. 0) THEN
+        DO j = 1,num_attributes
+         WRITE(buffer,'(A,1X,F18.12)') TRIM(buffer),geom%vertices(i)%attributes(j)
+        END DO
+      END IF
+      IF(geom%vertices(i)%isbound) THEN
+        WRITE(buffer,'(A,1X,I1)') TRIM(buffer),1
+      ELSE
+        WRITE(buffer,'(A,1X,I1)') TRIM(buffer),0
+      END IF
+      WRITE(nfd,'(A)') TRIM(buffer)
+    END DO
+    CLOSE(nfd)
+    ! Write out segment information intro
+    IF(ALLOCATED(geom%segments)) THEN
+      num_elements = SIZE(geom%segments)
+    ELSE
+      num_elements = 0
+    END IF
+    WRITE(pfd,'(I8,1X,I1)') num_elements,1
+    ! Write out segment information
+    IF(num_elements .GT. 0) THEN
+      IF(geom%segments(i)%isbound) THEN
+        WRITE(pfd,'(I8,1X,I8,1X,I8,1X,I1)') i, geom%segments(i)%ep1, geom%segments(i)%ep2, 1
+      ELSE
+        WRITE(pfd,'(I8,1X,I8,1X,I8,1X,I1)') i, geom%segments(i)%ep1, geom%segments(i)%ep2, 0
+      END IF
+    END IF
+    ! Write out hole information intro
+    IF(ALLOCATED(geom%segments)) THEN
+      num_elements = SIZE(geom%holes)
+    ELSE
+      num_elements = 0
+    END IF
+    WRITE(pfd,'(I8)') num_elements
+    ! Write out hole information
+    IF(num_elements .GT. 0) THEN
+      DO i=1,num_elements
+        WRITE(pfd,'(I8,1X,F18.12,1X,F18.12)') i,geom%holes(i)%x,geom%holes(i)%y
+      END DO
+    END IF
+    CLOSE(pfd)
+    ! Write out triangle information intro
+    IF(ALLOCATED(geom%triangles)) THEN
+      num_elements = SIZE(geom%triangles)
+      IF(ALLOCATED(geom%triangles(1)%attributes)) THEN
+        num_attributes = SIZE(geom%triangles(1)%attributes)
+      ELSE
+        num_attributes = 0
+      END IF
+      IF(geom%triangles(1)%is_subquad) THEN
+        Cind = 6
+      ELSE
+        Cind = 3
+      END IF
+    ELSE
+      num_elements = 0
+      num_attributes = 0
+      Cind = 3
+    END IF
+    WRITE(efd,'(I8,1X,I1,1X,I4)') num_elements,Cind,num_attributes
+    IF(num_elements .GT. 0) THEN
+      DO i=1,num_elements
+        buffer = ""
+        WRITE(buffer,'(I8,1X,I8,1X,I8,1X,I8)') i,geom%triangles(i)%c1,geom%triangles(i)%c2,geom%triangles(i)%c3
+        IF(geom%triangles(i)%is_subquad) THEN
+          WRITE(buffer,'(A,1X,I8,1X,I8,1X,I8)') TRIM(buffer),geom%triangles(i)%e1,geom%triangles(i)%e2,geom%triangles(i)%e3
+        END IF
+      END DO
+      IF(num_attributes .GT. 0) THEN
+        DO j = 1,num_attributes
+         WRITE(buffer,'(A,1X,F18.12)') TRIM(buffer),geom%triangles(i)%attributes(j)
+        END DO
+      END IF
+      WRITE(efd,'(A)') TRIM(buffer)
+    END IF
   END SUBROUTINE
 END MODULE output
