@@ -257,6 +257,6 @@ CONTAINS
         WRITE(efd,'(A)') TRIM(buffer)
       END DO
     END IF
-
+    CLOSE(efd)
   END SUBROUTINE
 END MODULE output
